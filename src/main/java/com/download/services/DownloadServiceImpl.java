@@ -1,14 +1,15 @@
 package com.download.services;
 
-import io.micrometer.core.instrument.util.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -16,27 +17,48 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class DownloadServiceImpl implements DownloadService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(DownloadServiceImpl.class);
     @Override
-    public Resource downloadFiles(String[] urls) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ZipOutputStream zos = new ZipOutputStream(baos);
+    public Resource downloadFiles(String[] urls){
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ZipOutputStream zos = new ZipOutputStream(baos);
 
-        for (String urlStr : urls) {
-            URL url = new URL(urlStr);
-            try (InputStream in = url.openStream()) {
-                String fileName = url.getFile();
-                ZipEntry entry = new ZipEntry(fileName);
-                zos.putNextEntry(entry);
-                byte[] buffer = new byte[1024];
-                int len;
-                while ((len = in.read(buffer)) > 0) {
-                    zos.write(buffer, 0, len);
+            for (String urlStr : urls) {
+                URL url = new URI(urlStr).toURL();
+
+                long start = System.currentTimeMillis();
+                LOGGER.info("Downloading " + urlStr);
+                try (InputStream in = url.openStream()) {
+                    String fileName = url.openConnection().getHeaderField("Content-Disposition");
+                    if (fileName != null && !fileName.isEmpty()) {
+                        fileName = fileName.substring(fileName.indexOf("filename=") + 10, fileName.length() - 1);
+
+                    }
+
+                    LOGGER.info("File name: " + fileName);
+                    ZipEntry entry = new ZipEntry(fileName);
+                    zos.putNextEntry(entry);
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = in.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
+                    }
+                    zos.closeEntry();
+
+                    long end = System.currentTimeMillis();
+                    LOGGER.info("Downloaded " + urlStr + " in " + (end - start) + " ms");
                 }
-                zos.closeEntry();
             }
+
+            zos.close();
+            return new ByteArrayResource(baos.toByteArray());
+        }
+        catch (Exception e) {
+            LOGGER.error("Error downloading files", e);
+            return null;
         }
 
-        zos.close();
-        return new ByteArrayResource(baos.toByteArray());
+
     }
 }

@@ -5,3 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    mem_limit: 500m
+    ports:
+      - "8080:8080"
