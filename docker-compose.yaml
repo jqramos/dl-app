@@ -1,0 +1,7 @@
+services:
+  api:
+    container_name: api-download
+    image: api-download
+    build:
+      context: .
+      dockerfile: Dockerfile
