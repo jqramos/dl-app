@@ -2,13 +2,11 @@ package com.download.services;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.URL;
 import java.util.zip.ZipEntry;
@@ -21,8 +19,11 @@ public class DownloadServiceImpl implements DownloadService {
     @Override
     public Resource downloadFiles(String[] urls){
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ZipOutputStream zos = new ZipOutputStream(baos);
+//            unique temp file name with date
+            String tempFileName = "downloadedFiles" + System.currentTimeMillis();
+            File tempFile = File.createTempFile(tempFileName, ".zip");
+            FileOutputStream fos = new FileOutputStream(tempFile);
+            ZipOutputStream zos = new ZipOutputStream(fos);
 
             for (String urlStr : urls) {
                 URL url = new URI(urlStr).toURL();
@@ -33,7 +34,6 @@ public class DownloadServiceImpl implements DownloadService {
                     String fileName = url.openConnection().getHeaderField("Content-Disposition");
                     if (fileName != null && !fileName.isEmpty()) {
                         fileName = fileName.substring(fileName.indexOf("filename=") + 10, fileName.length() - 1);
-
                     }
 
                     LOGGER.info("File name: " + fileName);
@@ -52,7 +52,7 @@ public class DownloadServiceImpl implements DownloadService {
             }
 
             zos.close();
-            return new ByteArrayResource(baos.toByteArray());
+            return new FileSystemResource(tempFile);
         }
         catch (Exception e) {
             LOGGER.error("Error downloading files", e);

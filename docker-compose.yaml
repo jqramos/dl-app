@@ -5,6 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    mem_limit: 500m
     ports:
       - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 1000M
